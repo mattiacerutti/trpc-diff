@@ -10,7 +10,7 @@
 Under the hood it uses:
 
 - [**zod-openapi**](https://github.com/samchungy/zod-openapi) to generate the OpenAPI contract from your Zod schemas
-- [**oasdiff-js**](https://github.com/oasdiff/oasdiff) (JavaScript bindings for oasdiff) to detect breaking changes between contracts
+- [**oasdiff-js**](https://github.com/mattiacerutti/oasdiff-js) (JavaScript bindings for oasdiff) to detect breaking changes between contracts
 
 ## Install
 
@@ -128,7 +128,7 @@ if (!result.compatible) {
 
 ### Binary not found after install
 
-`trpc-diff` depends on `oasdiff-js`, which downloads a native Go binary during its postinstall step. If your package manager blocks lifecycle scripts, see the [oasdiff-js troubleshooting guide](https://github.com/oasdiff/oasdiff/tree/main/oasdiff-js#troubleshooting) for platform-specific fixes (Bun, npm, pnpm, yarn, and CI environments).
+`trpc-diff` depends on `oasdiff-js`, which downloads a native Go binary during its postinstall step. If your package manager blocks lifecycle scripts, see the [oasdiff-js troubleshooting guide](https://github.com/mattiacerutti/oasdiff-js#troubleshooting) for platform-specific fixes (Bun, npm, pnpm, yarn, and CI environments).
 
 ## License
 
