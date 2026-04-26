@@ -1,32 +1,33 @@
-import type {z} from "zod";
+import type { z } from "zod";
 
-export interface IProcedureDef {
+export interface IProcedure {
   type: "query" | "mutation" | "subscription";
   inputs?: z.ZodType[];
   output?: z.ZodType;
 }
 
-export interface IRouterLike {
+export interface IRouter {
   _def: {
-    procedures: Record<string, {_def: IProcedureDef}>;
+    procedures: Record<string, { _def: IProcedure }>;
   };
 }
 
-export interface ITrpcContractConfig {
-  router: IRouterLike;
+export interface IConfig {
+  routerModule: string;
+  routerExport?: string;
   severityLevels?: Record<string, string>;
 }
 
 interface IOpenApiResponse {
   description: string;
-  content?: Record<string, {schema?: unknown}>;
+  content?: Record<string, { schema?: unknown }>;
 }
 
 export interface IOpenApiOperation {
   operationId: string;
   requestBody?: {
     required: boolean;
-    content: Record<string, {schema?: unknown}>;
+    content: Record<string, { schema?: unknown }>;
   };
   responses: Record<string, IOpenApiResponse>;
 }

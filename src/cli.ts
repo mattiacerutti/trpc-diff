@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {Command} from "commander";
 import {diffContracts} from "./diff";
-import {loadConfig} from "./config";
+import {loadConfig, loadRouter} from "./config";
 import {generateContract} from "./generate";
 import type {IOpenApiDocument} from "./types";
 
@@ -34,7 +34,8 @@ program
   .requiredOption("--output <path>", "Path to write the generated contract")
   .action(async (options: {config: string; output: string}) => {
     const config = await loadConfig(options.config, process.cwd());
-    const contract = generateContract(config.router);
+    const router = await loadRouter(config, process.cwd());
+    const contract = generateContract(router);
     await writeJson(options.output, contract);
     console.log(`Generated contract at ${path.resolve(process.cwd(), options.output)}`);
   });

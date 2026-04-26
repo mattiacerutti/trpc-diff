@@ -26,15 +26,17 @@ bun add -D trpc-diff
 
 **1. Create a config file**
 
-Export your router (default: `trpc-diff.config.ts`):
+Create `trpc-diff.config.ts` in your project root and point it at your router module:
 
 ```ts
-import { appRouter } from "./src/server/router";
-
 export default {
-  router: appRouter,
+  routerModule: "./src/server/router.ts",
+  routerExport: "appRouter",
 };
 ```
+
+- `routerModule` — path to the module that exports your router (required)
+- `routerExport` — the named export to read from that module (optional, uses default export if not present)
 
 **2. Generate a contract snapshot**
 
@@ -58,17 +60,19 @@ npx trpc-diff diff --base base.json --head head.json --json
 
 ## Configuration
 
-The config file must default-export an object with your router:
+The config file must default-export an object with a `routerModule` string:
 
 ```ts
 export default {
-  router: appRouter,
+  routerModule: "./src/server/router.ts",
+  routerExport: "appRouter",
 };
 ```
 
-| Option   | Type          | Description      |
-| -------- | ------------- | ---------------- |
-| `router` | `IRouterLike` | Your tRPC router |
+| Option         | Type     | Required | Description                                                    |
+| -------------- | -------- | -------- | -------------------------------------------------------------- |
+| `routerModule` | `string` | yes      | Path to the module that exports your router                    |
+| `routerExport` | `string` | no       | Named export to read from the module (default: default export) |
 
 ### Severity levels
 
@@ -76,7 +80,8 @@ export default {
 
 ```ts
 export default {
-  router: appRouter,
+  routerModule: "./src/server/router.ts",
+  routerExport: "appRouter",
   severityLevels: {
     // treat removing request properties as breaking
     "request-property-removed": "err",
@@ -111,6 +116,8 @@ npx trpc-diff diff --base <path> --head <path> [--config <path>] [--json]
 
 ## Programmatic usage
 
+### Generate and diff contracts
+
 ```ts
 import { generateContract, diffContracts } from "trpc-diff";
 
@@ -124,11 +131,39 @@ if (!result.compatible) {
 }
 ```
 
+### Load a router from config
+
+```ts
+import { loadConfig, loadRouter, generateContract } from "trpc-diff";
+
+const config = await loadConfig("./trpc-diff.config.ts");
+const router = await loadRouter(config, process.cwd());
+const contract = generateContract(router);
+```
+
+### Types
+
+```ts
+import type { ITrpcDiffConfig, IRouter, IProcedure } from "trpc-diff";
+
+// IConfig — shape of your config file
+// IRouter — shape of a tRPC router as seen by trpc-diff
+// IProcedure — shape of a single procedure (query, mutation, or subscription)
+```
+
 ## Troubleshooting
 
 ### Binary not found after install
 
 `trpc-diff` depends on `oasdiff-js`, which downloads a native Go binary during its postinstall step. If your package manager blocks lifecycle scripts, see the [oasdiff-js troubleshooting guide](https://github.com/mattiacerutti/oasdiff-js#troubleshooting) for platform-specific fixes (Bun, npm, pnpm, yarn, and CI environments).
+
+### "missing the '_def.procedures' property required for a tRPC router"
+
+If you see this error, `trpc-diff` found the export you specified but it is not a valid tRPC router. Make sure:
+
+- `routerModule` points to the right file
+- `routerExport` matches the export name in that file
+- The export is actually a tRPC router (not a procedure or other object)
 
 ## License
 
