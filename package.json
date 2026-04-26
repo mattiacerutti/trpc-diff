@@ -1,18 +1,57 @@
 {
   "name": "trpc-diff",
   "version": "0.0.1",
-  "module": "src/index.ts",
+  "description": "Detect breaking changes in tRPC routers",
   "type": "module",
-  "private": true,
-  "bin": {
-    "trpc-diff": "./src/cli.ts"
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
   },
+  "bin": {
+    "trpc-diff": "./dist/cli.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "build": "tsup",
+    "prepublishOnly": "npm run build",
     "test": "vitest run",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "prettier": "prettier --check ./src ./tests"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mattiacerutti/trpc-diff.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mattiacerutti/trpc-diff/issues"
+  },
+  "homepage": "https://github.com/mattiacerutti/trpc-diff#readme",
+  "keywords": [
+    "trpc",
+    "openapi",
+    "diff",
+    "breaking-changes",
+    "contract",
+    "api",
+    "zod",
+    "oasdiff"
+  ],
+  "author": {
+    "name": "Mattia Cerutti",
+    "url": "https://github.com/mattiacerutti"
+  },
+  "license": "MIT",
   "dependencies": {
     "oasdiff-js": "^2.0.2",
     "commander": "^14.0.3",
@@ -25,6 +64,7 @@
     "eslint": "^9.39.2",
     "globals": "^16.0.0",
     "prettier": "^3.6.2",
+    "tsup": "^8.5.1",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.31.0",
     "vitest": "^3.2.4"
