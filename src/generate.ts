@@ -180,7 +180,7 @@ export function generateContract(
   adapters: ParserOpenApiAdapter[],
   options: IGenerateContractOptions = {},
 ): IOpenApiDocument {
-  options.exitOnMissingAdapter ??= false;
+  options.exitOnMissingAdapter ??= true;
 
   return {
     openapi: "3.0.0",
