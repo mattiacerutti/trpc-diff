@@ -157,4 +157,24 @@ describe("generate and diff integration", () => {
     expect(result.compatible).toBe(false);
     expect(result.findings.some((f: IDiffFinding) => f.code === "response.body.scope.add")).toBe(true);
   });
+
+  it("detects breaking change when removing a nested procedure", async () => {
+    const base = generateContract(
+      router({
+        auth: router({
+          me: query(z.void(), z.object({id: z.string()})),
+        }),
+      })
+    );
+
+    const head = generateContract(
+      router({
+        auth: router({}),
+      })
+    );
+
+    const result = await diffContracts(base, head);
+
+    expect(result.compatible).toBe(false);
+  });
 });
