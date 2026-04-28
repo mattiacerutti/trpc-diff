@@ -29,29 +29,29 @@ Import your router, generate a contract, and diff it against another version.
 ### Generate a contract
 
 ```ts
-import { generateContract, zodOpenApiAdapter } from "trpc-diff";
+import { generateContract, zodAdapter } from "trpc-diff";
 import { appRouter } from "./server/router";
 
-const contract = generateContract(appRouter, [zodOpenApiAdapter]);
+const contract = generateContract(appRouter, [zodAdapter]);
 
 // write to disk or pass directly to diffContracts
 await Bun.write("contract.json", JSON.stringify(contract, null, 2));
 ```
 
-You must provide at least one schema adapter. `zodOpenApiAdapter` is included for Zod schemas. You can also bring your own adapter for other parsers (e.g. Valibot, ArkType, or custom validators).
+You must provide at least one schema adapter. `zodAdapter` is included for Zod schemas. You can also bring your own adapter for other parsers (e.g. Valibot, ArkType, or custom validators).
 
 #### Custom adapters
 
 If your router uses multiple parser libraries, you can provide multiple adapters:
 
 ```ts
-const contract = generateContract(appRouter, [zodOpenApiAdapter, myValibotAdapter]);
+const contract = generateContract(appRouter, [zodAdapter, myValibotAdapter]);
 ```
 
-An adapter implements the `ParserOpenApiAdapter<TParser>` interface:
+An adapter implements the `IParserAdapter<TParser>` interface:
 
 ```ts
-export interface ParserOpenApiAdapter<TParser = unknown> {
+export interface IParserAdapter<TParser = unknown> {
   isParser(value: unknown): value is TParser;
   mergeInputs(inputs: TParser[]): TParser | null;
   toSchema(parser: TParser, io: "input" | "output"): unknown;
@@ -111,7 +111,7 @@ npx oasdiff checks
 By default, if a procedure uses a parser that none of the provided adapters can handle, `generateContract` will throw and exit. You can make it skip and log it instead:
 
 ```ts
-const contract = generateContract(appRouter, [zodOpenApiAdapter], {
+const contract = generateContract(appRouter, [zodAdapter], {
   exitOnMissingAdapter: false,
 });
 ```
@@ -137,11 +137,11 @@ Since the library is runtime-agnostic, you can diff PRs in CI by generating cont
 
 Converts a tRPC router to an OpenAPI 3.0 contract.
 
-| Parameter                      | Type                     | Description                                           |
-| ------------------------------ | ------------------------ | ----------------------------------------------------- |
-| `router`                       | `AnyRouter`              | tRPC router                                           |
-| `adapters`                     | `ParserOpenApiAdapter[]` | Adapters for parsing input/output schemas             |
-| `options.exitOnMissingAdapter` | `boolean`                | Throw when a parser has no adapter (default: `false`) |
+| Parameter                      | Type               | Description                                          |
+| ------------------------------ | ------------------ | ---------------------------------------------------- |
+| `router`                       | `AnyRouter`        | tRPC router                                          |
+| `adapters`                     | `IParserAdapter[]` | Adapters for parsing input/output schemas            |
+| `options.exitOnMissingAdapter` | `boolean`          | Throw when a parser has no adapter (default: `true`) |
 
 ### `diffContracts(base, head, options?): Promise<IDiffResult>`
 
