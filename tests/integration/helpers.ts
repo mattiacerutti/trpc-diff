@@ -28,6 +28,12 @@ export function query(input: z.ZodType, output: z.ZodType): IProcedureLike {
   };
 }
 
-export function router(procedures: Record<string, IProcedureLike>) {
+interface IRouterLike {
+  _def: {
+    procedures: Record<string, IProcedureLike | IRouterLike>;
+  };
+}
+
+export function router(procedures: Record<string, IProcedureLike | IRouterLike>): IRouterLike {
   return {_def: {procedures}};
 }

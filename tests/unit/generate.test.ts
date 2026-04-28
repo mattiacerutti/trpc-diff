@@ -151,4 +151,45 @@ describe("routerToOpenApiDocument", () => {
 
     expect(doc.paths).toHaveProperty("/subscription/onEvent");
   });
+
+  it("converts nested routers", () => {
+    const doc = generateContract({
+      _def: {
+        procedures: {
+          getUser: {
+            _def: {
+              type: "query",
+              inputs: [z.object({id: z.string()})],
+              output: z.object({name: z.string()}),
+            },
+          },
+          auth: {
+            _def: {
+              procedures: {
+                me: {
+                  _def: {
+                    type: "query",
+                    output: z.object({id: z.string()}),
+                  },
+                },
+                login: {
+                  _def: {
+                    type: "mutation",
+                    inputs: [z.object({email: z.string(), password: z.string()})],
+                    output: z.object({token: z.string()}),
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    expect(doc.paths).toHaveProperty("/query/getUser");
+    expect(doc.paths).toHaveProperty("/query/auth/me");
+    expect(doc.paths).toHaveProperty("/mutation/auth/login");
+    expect(doc.paths["/query/auth/me"]!.post.operationId).toBe("auth.me");
+    expect(doc.paths["/mutation/auth/login"]!.post.operationId).toBe("auth.login");
+  });
 });

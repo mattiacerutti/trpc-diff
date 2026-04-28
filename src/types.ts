@@ -8,8 +8,12 @@ export interface IProcedure {
 
 export interface IRouter {
   _def: {
-    procedures: Record<string, { _def: IProcedure }>;
+    procedures: Record<string, IRouter | IProcedureWrapper>;
   };
+}
+
+export interface IProcedureWrapper {
+  _def: IProcedure;
 }
 
 interface IOpenApiResponse {
@@ -26,7 +30,7 @@ export interface IOpenApiOperation {
   responses: Record<string, IOpenApiResponse>;
 }
 
-interface IOpenApiPathItem {
+export interface IOpenApiPathItem {
   post: IOpenApiOperation;
 }
 
