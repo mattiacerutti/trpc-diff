@@ -5,7 +5,7 @@
 
 ## What it does
 
-`tRPC-diff` converts your tRPC router to an OpenAPI contract and diffs two versions to find breaking changes.
+`trpc-diff` converts your tRPC router to an OpenAPI contract and diffs two contracts to find breaking changes.
 
 Under the hood it uses:
 
@@ -20,150 +20,104 @@ npm install -D trpc-diff
 bun add -D trpc-diff
 ```
 
-> **Note:** `trpc-diff` depends on `oasdiff-js`, which downloads a native Go binary during its postinstall step. Some package managers (Bun, npm with `--ignore-scripts`, CI environments) may block this. If you get a "binary not found" error, see [Troubleshooting](#troubleshooting).
+## Usage
 
-## Quick start
+Import your router, generate a contract, and diff it against another version.
 
-**1. Create a config file**
-
-Create `trpc-diff.config.ts` in your project root and point it at your router module:
+### Generate a contract
 
 ```ts
-export default {
-  routerModule: "./src/server/router.ts",
-  routerExport: "appRouter",
-};
+import { generateContract } from "trpc-diff";
+import { appRouter } from "./server/router";
+
+const contract = generateContract(appRouter);
+
+// write to disk or pass directly to diffContracts
+await Bun.write("contract.json", JSON.stringify(contract, null, 2));
 ```
 
-- `routerModule` — path to the module that exports your router (required)
-- `routerExport` — the named export to read from that module (optional, uses default export if not present)
-
-**2. Generate a contract snapshot**
-
-```bash
-npx trpc-diff generate --output contract-base.json
-```
-
-**3. Diff against another version**
-
-```bash
-npx trpc-diff diff --base contract-base.json --head contract-head.json
-```
-
-The command exits with code `1` if breaking changes are found.
-
-Use `--json` for machine-readable output:
-
-```bash
-npx trpc-diff diff --base base.json --head head.json --json
-```
-
-## Configuration
-
-The config file must default-export an object with a `routerModule` string:
+### Diff two contracts
 
 ```ts
-export default {
-  routerModule: "./src/server/router.ts",
-  routerExport: "appRouter",
-};
+import { diffContracts } from "trpc-diff";
+import base from "./contract-base.json";
+import head from "./contract-head.json";
+
+const result = await diffContracts(base, head);
+
+if (!result.compatible) {
+  console.log("Breaking changes found:");
+  for (const finding of result.findings) {
+    console.log(`- ${finding.code} at ${finding.entity}`);
+  }
+}
 ```
 
-| Option         | Type     | Required | Description                                                    |
-| -------------- | -------- | -------- | -------------------------------------------------------------- |
-| `routerModule` | `string` | yes      | Path to the module that exports your router                    |
-| `routerExport` | `string` | no       | Named export to read from the module (default: default export) |
-
-### Severity levels
-
-`severityLevels` emulates an [`oasdiff-levels.txt`](https://github.com/oasdiff/oasdiff/blob/main/docs/BREAKING-CHANGES.md#customizing-severity-levels) file. Each key is a check id and each value is a level (`err`, `warn`, `info`, or `none`).
+### Custom severity levels
 
 ```ts
-export default {
-  routerModule: "./src/server/router.ts",
-  routerExport: "appRouter",
+const result = await diffContracts(base, head, {
   severityLevels: {
     // treat removing request properties as breaking
     "request-property-removed": "err",
     // ignore response enum value additions
     "response-body-enum-value-added": "none",
   },
-};
+});
 ```
+
+Each key is a check id and each value is a level (`err`, `warn`, `info`, or `none`). This emulates an [`oasdiff-levels.txt`](https://github.com/oasdiff/oasdiff/blob/main/docs/BREAKING-CHANGES.md#customizing-severity-levels) file.
 
 #### Defaults
 
-By default, only `request-property-removed` is overridden to `none` (removing request properties is considered compatible). This matches typical tRPC behavior where Zod input schemas are non-strict by default making extra properties ignored, so removing a field from the schema doesn't necessarily break existing clients.
+By default, only `request-property-removed` is overridden to `none` (removing request properties is considered compatible). This matches typical tRPC behavior where Zod input schemas are non-strict by default, so removing a field from the schema doesn't necessarily break existing clients.
 
 Everything else follows [oasdiff's default severity levels](https://github.com/oasdiff/oasdiff/blob/main/docs/BREAKING-CHANGES.md#customizing-severity-levels).
 
-Run `npx oasdiff checks` to see all available check ids and their default levels.
+To see all available check ids and their default levels, install `@oasdiff-js/oasdiff-js` directly and run:
 
-## CLI reference
-
-```
-npx trpc-diff generate --output <path> [--config <path>]
-npx trpc-diff diff --base <path> --head <path> [--config <path>] [--json]
+```bash
+npx oasdiff checks
 ```
 
-| Flag       | Description                                          |
-| ---------- | ---------------------------------------------------- |
-| `--output` | Where to write the generated contract                |
-| `--base`   | Path to the base contract                            |
-| `--head`   | Path to the head contract                            |
-| `--config` | Path to config file (default: `trpc-diff.config.ts`) |
-| `--json`   | Output diff results as JSON                          |
+### Using it in CI
 
-## Programmatic usage
+Since the library is runtime-agnostic, you can diff PRs in CI by generating contracts in each checkout with the same runtime your app uses.
 
-### Generate and diff contracts
+```yaml
+- name: Generate base contract
+  run: bun run scripts/generate-contract.ts --out base.json
 
-```ts
-import { generateContract, diffContracts } from "trpc-diff";
+- name: Generate head contract
+  run: bun run scripts/generate-contract.ts --out head.json
 
-const base = generateContract(routerV1);
-const head = generateContract(routerV2);
-
-const result = await diffContracts(base, head);
-
-if (!result.compatible) {
-  console.log("Breaking changes found:", result.findings);
-}
+- name: Diff contracts
+  run: bun run scripts/diff-contracts.ts --base base.json --head head.json
 ```
 
-### Load a router from config
+## API reference
 
-```ts
-import { loadConfig, loadRouter, generateContract } from "trpc-diff";
+### `generateContract(router: IRouter): IOpenApiDocument`
 
-const config = await loadConfig("./trpc-diff.config.ts");
-const router = await loadRouter(config, process.cwd());
-const contract = generateContract(router);
-```
+Converts a tRPC router to an OpenAPI 3.0 contract.
 
-### Types
+### `diffContracts(base, head, options?): Promise<IDiffResult>`
 
-```ts
-import type { ITrpcDiffConfig, IRouter, IProcedure } from "trpc-diff";
+Diffs two OpenAPI contracts for breaking changes.
 
-// IConfig — shape of your config file
-// IRouter — shape of a tRPC router as seen by trpc-diff
-// IProcedure — shape of a single procedure (query, mutation, or subscription)
-```
+| Parameter                | Type                     | Description                 |
+| ------------------------ | ------------------------ | --------------------------- |
+| `base`                   | `IOpenApiDocument`       | Base contract               |
+| `head`                   | `IOpenApiDocument`       | Head contract               |
+| `options.severityLevels` | `Record<string, string>` | Optional severity overrides |
 
-## Troubleshooting
+Returns `{ compatible: boolean; findings: IDiffFinding[] }`.
 
-### Binary not found after install
+## Design
 
-`trpc-diff` depends on `oasdiff-js`, which downloads a native Go binary during its postinstall step. If your package manager blocks lifecycle scripts, see the [oasdiff-js troubleshooting guide](https://github.com/mattiacerutti/oasdiff-js#troubleshooting) for platform-specific fixes (Bun, npm, pnpm, yarn, and CI environments).
+`trpc-diff` is a library and not a CLI tool because tRPC routers are runtime values.
 
-### "missing the '_def.procedures' property required for a tRPC router"
-
-If you see this error, `trpc-diff` found the export you specified but it is not a valid tRPC router. Make sure:
-
-- `routerModule` points to the right file
-- `routerExport` matches the export name in that file
-- The export is actually a tRPC router (not a procedure or other object)
+Extracting their schemas requires executing the module that defines them, which in turn requires the correct runtime, module resolver, and loader for your specific project. Rather than bundling a TypeScript loader or importing user code on your behalf, the library exposes the primitives so you can run them in your own runtime context.
 
 ## License
 

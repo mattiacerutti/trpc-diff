@@ -1,8 +1,8 @@
 import {mkdtemp, writeFile, rm} from "node:fs/promises";
 import path from "node:path";
 import {tmpdir} from "node:os";
-import {runOasdiffBreakingFromSpecs} from "oasdiff-js";
-import type {IOasdiffChange} from "oasdiff-js";
+import {runOasdiffBreakingFromSpecs} from "@oasdiff-js/oasdiff-js";
+import type {IOasdiffChange} from "@oasdiff-js/oasdiff-js";
 import type {IDiffFinding, IDiffResult, IOpenApiDocument} from "./types";
 
 const OASDIFF_BREAKING_LEVEL = 2;

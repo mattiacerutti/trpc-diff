@@ -1,4 +1,3 @@
-export { loadConfig, loadRouter } from "./config";
 export { diffContracts } from "./diff";
 export { generateContract } from "./generate";
 export type {
@@ -7,5 +6,4 @@ export type {
   IOpenApiDocument,
   IProcedure,
   IRouter,
-  IConfig as ITrpcDiffConfig,
 } from "./types";

@@ -12,12 +12,6 @@ export interface IRouter {
   };
 }
 
-export interface IConfig {
-  routerModule: string;
-  routerExport?: string;
-  severityLevels?: Record<string, string>;
-}
-
 interface IOpenApiResponse {
   description: string;
   content?: Record<string, { schema?: unknown }>;
