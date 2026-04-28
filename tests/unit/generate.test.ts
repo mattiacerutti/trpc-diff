@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { initTRPC } from "@trpc/server";
 import { createOperation, generateContract } from "@/generate";
@@ -65,6 +65,56 @@ describe("createOperation", () => {
     const requestSchema = operation.requestBody!.content!["application/json"]!.schema;
     expect(requestSchema).toBeDefined();
     expect(requestSchema).toHaveProperty("allOf");
+  });
+
+  it("skips and warns when an input adapter is missing by default", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const procedure = t.procedure
+      .input(z.object({ name: z.string() }))
+      .output(z.object({ id: z.string() }))
+      .mutation(() => ({ id: "1" }));
+
+    const operation = createOperation("createUser", procedure, []);
+
+    expect(operation.requestBody).toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledWith("[trpc-diff] No adapter found for input parser.");
+
+    warnSpy.mockRestore();
+  });
+
+  it("skips and warns when an output adapter is missing by default", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const procedure = t.procedure.output(z.object({ id: z.string() })).mutation(() => ({ id: "1" }));
+
+    const operation = createOperation("createUser", procedure, []);
+
+    expect(operation.responses["200"]!.content!["application/json"]!.schema).toEqual({});
+    expect(warnSpy).toHaveBeenCalledWith("[trpc-diff] No adapter found for output parser.");
+
+    warnSpy.mockRestore();
+  });
+
+  it("throws when an input adapter is missing and exitOnMissingAdapter is enabled", () => {
+    const procedure = t.procedure
+      .input(z.object({ name: z.string() }))
+      .output(z.object({ id: z.string() }))
+      .mutation(() => ({ id: "1" }));
+
+    expect(() =>
+      createOperation("createUser", procedure, [], {
+        exitOnMissingAdapter: true,
+      }),
+    ).toThrowError("[trpc-diff] No adapter found for input parser.");
+  });
+
+  it("throws when an output adapter is missing and exitOnMissingAdapter is enabled", () => {
+    const procedure = t.procedure.output(z.object({ id: z.string() })).mutation(() => ({ id: "1" }));
+
+    expect(() =>
+      createOperation("createUser", procedure, [], {
+        exitOnMissingAdapter: true,
+      }),
+    ).toThrowError("[trpc-diff] No adapter found for output parser.");
   });
 });
 

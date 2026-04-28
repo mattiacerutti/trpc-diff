@@ -1,5 +1,11 @@
 import type { AnyProcedure, AnyRouter } from "@trpc/server";
-import type { IOpenApiDocument, IOpenApiOperation, IOpenApiPathItem, ParserOpenApiAdapter } from "./types";
+import type {
+  IGenerateContractOptions,
+  IOpenApiDocument,
+  IOpenApiOperation,
+  IOpenApiPathItem,
+  ParserOpenApiAdapter,
+} from "./types";
 
 interface RuntimeProcedureDef {
   type: "query" | "mutation" | "subscription";
@@ -24,7 +30,21 @@ function mergeOpenApiSchemas(schemas: unknown[]): unknown {
   return { allOf: schemas };
 }
 
-function buildInputSchema(inputs: unknown[], adapters: ParserOpenApiAdapter[]): unknown | undefined {
+function handleMissingAdapter(kind: "input" | "output", options: IGenerateContractOptions) {
+  const message = `[trpc-diff] No adapter found for ${kind} parser.`;
+
+  if (options.exitOnMissingAdapter) {
+    throw new Error(message);
+  }
+
+  console.warn(message);
+}
+
+function buildInputSchema(
+  inputs: unknown[],
+  adapters: ParserOpenApiAdapter[],
+  options: IGenerateContractOptions,
+): unknown | undefined {
   if (inputs.length === 0) {
     return undefined;
   }
@@ -34,7 +54,7 @@ function buildInputSchema(inputs: unknown[], adapters: ParserOpenApiAdapter[]): 
   for (const input of inputs) {
     const adapter = adapters.find((a) => a.isParser(input));
     if (!adapter) {
-      console.warn("[trpc-diff] No adapter found for input parser, skipping.");
+      handleMissingAdapter("input", options);
       continue;
     }
     if (!groups.has(adapter)) {
@@ -58,14 +78,18 @@ function buildInputSchema(inputs: unknown[], adapters: ParserOpenApiAdapter[]): 
   return mergeOpenApiSchemas(schemas);
 }
 
-function buildOutputSchema(output: unknown, adapters: ParserOpenApiAdapter[]): unknown | undefined {
+function buildOutputSchema(
+  output: unknown,
+  adapters: ParserOpenApiAdapter[],
+  options: IGenerateContractOptions,
+): unknown | undefined {
   if (output === undefined) {
     return undefined;
   }
 
   const adapter = findAdapter(output, adapters);
   if (!adapter) {
-    console.warn("[trpc-diff] No adapter found for output parser, skipping.");
+    handleMissingAdapter("output", options);
     return undefined;
   }
   return adapter.toSchema(output, "output");
@@ -79,10 +103,11 @@ export function createOperation(
   procedurePath: string,
   procedure: RuntimeProcedure,
   adapters: ParserOpenApiAdapter[],
+  options: IGenerateContractOptions = {},
 ): IOpenApiOperation {
   const def = procedure._def;
-  const inputSchema = buildInputSchema(def.inputs, adapters);
-  const outputSchema = buildOutputSchema(def.output, adapters) || {};
+  const inputSchema = buildInputSchema(def.inputs, adapters, options);
+  const outputSchema = buildOutputSchema(def.output, adapters, options) || {};
 
   return {
     operationId: procedurePath,
@@ -128,7 +153,11 @@ function isProcedure(value: unknown): value is RuntimeProcedure {
   );
 }
 
-function collectPaths(router: AnyRouter, adapters: ParserOpenApiAdapter[]): Record<string, IOpenApiPathItem> {
+function collectPaths(
+  router: AnyRouter,
+  adapters: ParserOpenApiAdapter[],
+  options: IGenerateContractOptions,
+): Record<string, IOpenApiPathItem> {
   const paths: Record<string, IOpenApiPathItem> = {};
 
   for (const [procedurePath, value] of Object.entries(router._def.procedures)) {
@@ -139,20 +168,26 @@ function collectPaths(router: AnyRouter, adapters: ParserOpenApiAdapter[]): Reco
 
     const pathKey = toSyntheticPath(value._def.type, procedurePath);
     paths[pathKey] = {
-      post: createOperation(procedurePath, value, adapters),
+      post: createOperation(procedurePath, value, adapters, options),
     };
   }
 
   return paths;
 }
 
-export function generateContract(router: AnyRouter, adapters: ParserOpenApiAdapter[]): IOpenApiDocument {
+export function generateContract(
+  router: AnyRouter,
+  adapters: ParserOpenApiAdapter[],
+  options: IGenerateContractOptions = {},
+): IOpenApiDocument {
+  options.exitOnMissingAdapter ??= false;
+
   return {
     openapi: "3.0.0",
     info: {
       title: "tRPC Contract Diff",
       version: "1.0.0",
     },
-    paths: collectPaths(router, adapters),
+    paths: collectPaths(router, adapters, options),
   };
 }

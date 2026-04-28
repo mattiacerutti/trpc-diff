@@ -4,6 +4,14 @@ export interface ParserOpenApiAdapter<TParser = unknown> {
   toSchema(parser: TParser, io: "input" | "output"): unknown;
 }
 
+export interface IDiffContractsOptions {
+  severityLevels?: Record<string, string>;
+}
+
+export interface IGenerateContractOptions {
+  exitOnMissingAdapter?: boolean;
+}
+
 interface IOpenApiResponse {
   description: string;
   content?: Record<string, { schema?: unknown }>;

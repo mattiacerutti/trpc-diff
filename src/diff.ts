@@ -3,7 +3,7 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { runOasdiffBreakingFromSpecs } from "@oasdiff-js/oasdiff-js";
 import type { IOasdiffChange } from "@oasdiff-js/oasdiff-js";
-import type { IDiffFinding, IDiffResult, IOpenApiDocument } from "./types";
+import type { IDiffContractsOptions, IDiffFinding, IDiffResult, IOpenApiDocument } from "./types";
 
 const OASDIFF_BREAKING_LEVEL = 2;
 
@@ -53,10 +53,6 @@ async function buildSeverityLevelsFile(levels: Record<string, string>): Promise<
 
   await writeFile(filePath, content + "\n", "utf8");
   return filePath;
-}
-
-interface IDiffContractsOptions {
-  severityLevels?: Record<string, string>;
 }
 
 export async function diffContracts(
