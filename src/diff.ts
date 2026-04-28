@@ -3,7 +3,7 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { runOasdiffBreakingFromSpecs } from "@oasdiff-js/oasdiff-js";
 import type { IOasdiffChange } from "@oasdiff-js/oasdiff-js";
-import type { IDiffContractsOptions, IDiffFinding, IDiffResult, IOpenApiDocument } from "./types";
+import type { IDiffContractsOptions, IDiffFinding, IDiffResult, IOpenApiDocument } from "@/types";
 
 const OASDIFF_BREAKING_LEVEL = 2;
 

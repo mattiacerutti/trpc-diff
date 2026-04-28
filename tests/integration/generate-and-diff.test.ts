@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { diffContracts, generateContract, zodOpenApiAdapter } from "@/index";
+import { diffContracts, generateContract, zodAdapter } from "@/index";
 import type { IDiffFinding } from "@/types";
 
 async function createTrpc() {
@@ -19,7 +19,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ id: z.string() }))
           .mutation(() => ({ id: "1" })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const head = generateContract(
@@ -29,7 +29,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ id: z.string() }))
           .mutation(() => ({ id: "1" })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const result = await diffContracts(base, head);
@@ -48,7 +48,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ id: z.string() }))
           .mutation(() => ({ id: "1" })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const head = generateContract(
@@ -58,7 +58,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ id: z.string() }))
           .mutation(() => ({ id: "1" })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const result = await diffContracts(base, head);
@@ -77,7 +77,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ name: z.string() }))
           .query(() => ({ name: "Alice" })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const head = generateContract(
@@ -87,7 +87,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ name: z.string(), email: z.string() }))
           .query(() => ({ name: "Alice", email: "a@example.com" })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const result = await diffContracts(base, head);
@@ -106,7 +106,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ name: z.string(), email: z.string() }))
           .query(() => ({ name: "Alice", email: "a@example.com" })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const head = generateContract(
@@ -116,7 +116,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ name: z.string() }))
           .query(() => ({ name: "Alice" })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const result = await diffContracts(base, head);
@@ -135,7 +135,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ id: z.string() }))
           .mutation(() => ({ id: "1" })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const head = generateContract(
@@ -145,7 +145,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ id: z.string() }))
           .mutation(() => ({ id: "1" })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const result = await diffContracts(base, head);
@@ -164,7 +164,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ status: z.enum(["draft", "published"]) }))
           .query(() => ({ status: "published" as const })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const head = generateContract(
@@ -174,7 +174,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ status: z.enum(["draft", "published", "archived"]) }))
           .query(() => ({ status: "published" as const })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const result = await diffContracts(base, head);
@@ -193,7 +193,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ name: z.string(), age: z.number() }))
           .query(() => ({ name: "Alice", age: 30 })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const head = generateContract(
@@ -203,7 +203,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ name: z.string(), age: z.number().int().min(0).max(120) }))
           .query(() => ({ name: "Alice", age: 30 })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const result = await diffContracts(base, head);
@@ -222,7 +222,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ name: z.string(), age: z.number().int().min(0).max(120) }))
           .query(() => ({ name: "Alice", age: 30 })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const head = generateContract(
@@ -232,7 +232,7 @@ describe("generate and diff integration", () => {
           .output(z.object({ name: z.string(), age: z.number() }))
           .query(() => ({ name: "Alice", age: 30 })),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const result = await diffContracts(base, head);
@@ -250,19 +250,18 @@ describe("generate and diff integration", () => {
           me: t.procedure.output(z.object({ id: z.string() })).query(() => ({ id: "1" })),
         }),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const head = generateContract(
       t.router({
         auth: t.router({}),
       }),
-      [zodOpenApiAdapter],
+      [zodAdapter],
     );
 
     const result = await diffContracts(base, head);
 
     expect(result.compatible).toBe(false);
   });
-
 });

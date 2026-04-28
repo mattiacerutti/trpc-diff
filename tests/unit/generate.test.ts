@@ -1,19 +1,24 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { initTRPC } from "@trpc/server";
-import { createOperation, generateContract } from "@/generate";
-import { zodOpenApiAdapter } from "@/index";
+import { generateContract } from "@/generate";
+import { zodAdapter } from "@/generate/adapters";
 
 const t = initTRPC.create();
 
-describe("createOperation", () => {
+describe("operation generation", () => {
   it("builds an operation with input and output", () => {
-    const procedure = t.procedure
-      .input(z.object({ name: z.string() }))
-      .output(z.object({ id: z.string() }))
-      .mutation(() => ({ id: "1" }));
+    const doc = generateContract(
+      t.router({
+        createUser: t.procedure
+          .input(z.object({ name: z.string() }))
+          .output(z.object({ id: z.string() }))
+          .mutation(() => ({ id: "1" })),
+      }),
+      [zodAdapter],
+    );
 
-    const operation = createOperation("createUser", procedure, [zodOpenApiAdapter]);
+    const operation = doc.paths["/mutation/createUser"]!.post;
 
     expect(operation.operationId).toBe("createUser");
     expect(operation.requestBody).toBeDefined();
@@ -32,9 +37,14 @@ describe("createOperation", () => {
   });
 
   it("builds an operation without input", () => {
-    const procedure = t.procedure.output(z.array(z.string())).query(() => ["foo"]);
+    const doc = generateContract(
+      t.router({
+        getUsers: t.procedure.output(z.array(z.string())).query(() => ["foo"]),
+      }),
+      [zodAdapter],
+    );
 
-    const operation = createOperation("getUsers", procedure, [zodOpenApiAdapter]);
+    const operation = doc.paths["/query/getUsers"]!.post;
 
     expect(operation.operationId).toBe("getUsers");
     expect(operation.requestBody).toBeUndefined();
@@ -45,36 +55,52 @@ describe("createOperation", () => {
   });
 
   it("builds an operation without output", () => {
-    const procedure = t.procedure.input(z.object({ id: z.string() })).mutation(() => undefined);
+    const doc = generateContract(
+      t.router({
+        deleteUser: t.procedure.input(z.object({ id: z.string() })).mutation(() => undefined),
+      }),
+      [zodAdapter],
+    );
 
-    const operation = createOperation("deleteUser", procedure, [zodOpenApiAdapter]);
+    const operation = doc.paths["/mutation/deleteUser"]!.post;
 
     expect(operation.operationId).toBe("deleteUser");
     expect(operation.responses["200"]!.content!["application/json"]!.schema).toEqual({});
   });
 
   it("merges multiple inputs with intersection", () => {
-    const procedure = t.procedure
-      .input(z.object({ name: z.string() }))
-      .input(z.object({ email: z.string() }))
-      .output(z.object({ id: z.string() }))
-      .mutation(() => ({ id: "1" }));
+    const doc = generateContract(
+      t.router({
+        createUser: t.procedure
+          .input(z.object({ name: z.string() }))
+          .input(z.object({ email: z.string() }))
+          .output(z.object({ id: z.string() }))
+          .mutation(() => ({ id: "1" })),
+      }),
+      [zodAdapter],
+    );
 
-    const operation = createOperation("createUser", procedure, [zodOpenApiAdapter]);
+    const operation = doc.paths["/mutation/createUser"]!.post;
 
     const requestSchema = operation.requestBody!.content!["application/json"]!.schema;
     expect(requestSchema).toBeDefined();
     expect(requestSchema).toHaveProperty("allOf");
   });
 
-  it("skips and warns when an input adapter is missing by default", () => {
+  it("skips and warns when an input adapter is missing and exitOnMissingAdapter is disabled", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const procedure = t.procedure
-      .input(z.object({ name: z.string() }))
-      .output(z.object({ id: z.string() }))
-      .mutation(() => ({ id: "1" }));
+    const doc = generateContract(
+      t.router({
+        createUser: t.procedure
+          .input(z.object({ name: z.string() }))
+          .output(z.object({ id: z.string() }))
+          .mutation(() => ({ id: "1" })),
+      }),
+      [],
+      { exitOnMissingAdapter: false },
+    );
 
-    const operation = createOperation("createUser", procedure, []);
+    const operation = doc.paths["/mutation/createUser"]!.post;
 
     expect(operation.requestBody).toBeUndefined();
     expect(warnSpy).toHaveBeenCalledWith("[trpc-diff] No adapter found for input parser.");
@@ -82,11 +108,17 @@ describe("createOperation", () => {
     warnSpy.mockRestore();
   });
 
-  it("skips and warns when an output adapter is missing by default", () => {
+  it("skips and warns when an output adapter is missing and exitOnMissingAdapter is disabled", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const procedure = t.procedure.output(z.object({ id: z.string() })).mutation(() => ({ id: "1" }));
+    const doc = generateContract(
+      t.router({
+        createUser: t.procedure.output(z.object({ id: z.string() })).mutation(() => ({ id: "1" })),
+      }),
+      [],
+      { exitOnMissingAdapter: false },
+    );
 
-    const operation = createOperation("createUser", procedure, []);
+    const operation = doc.paths["/mutation/createUser"]!.post;
 
     expect(operation.responses["200"]!.content!["application/json"]!.schema).toEqual({});
     expect(warnSpy).toHaveBeenCalledWith("[trpc-diff] No adapter found for output parser.");
@@ -94,26 +126,28 @@ describe("createOperation", () => {
     warnSpy.mockRestore();
   });
 
-  it("throws when an input adapter is missing and exitOnMissingAdapter is enabled", () => {
-    const procedure = t.procedure
-      .input(z.object({ name: z.string() }))
-      .output(z.object({ id: z.string() }))
-      .mutation(() => ({ id: "1" }));
-
+  it("throws by default when an input adapter is missing", () => {
     expect(() =>
-      createOperation("createUser", procedure, [], {
-        exitOnMissingAdapter: true,
-      }),
+      generateContract(
+        t.router({
+          createUser: t.procedure
+            .input(z.object({ name: z.string() }))
+            .output(z.object({ id: z.string() }))
+            .mutation(() => ({ id: "1" })),
+        }),
+        [],
+      ),
     ).toThrowError("[trpc-diff] No adapter found for input parser.");
   });
 
-  it("throws when an output adapter is missing and exitOnMissingAdapter is enabled", () => {
-    const procedure = t.procedure.output(z.object({ id: z.string() })).mutation(() => ({ id: "1" }));
-
+  it("throws by default when an output adapter is missing", () => {
     expect(() =>
-      createOperation("createUser", procedure, [], {
-        exitOnMissingAdapter: true,
-      }),
+      generateContract(
+        t.router({
+          createUser: t.procedure.output(z.object({ id: z.string() })).mutation(() => ({ id: "1" })),
+        }),
+        [],
+      ),
     ).toThrowError("[trpc-diff] No adapter found for output parser.");
   });
 });
@@ -127,29 +161,11 @@ describe("generateContract", () => {
         .mutation(() => ({ id: "1" })),
     });
 
-    const doc = generateContract(router, [zodOpenApiAdapter]);
+    const doc = generateContract(router, [zodAdapter]);
 
     expect(doc.openapi).toBe("3.0.0");
     expect(doc.paths).toHaveProperty("/mutation/createUser");
     expect(doc.paths).not.toHaveProperty("/query/createUser");
-  });
-
-  it("converts a router with mixed procedure types", () => {
-    const router = t.router({
-      getUser: t.procedure
-        .input(z.object({ id: z.string() }))
-        .output(z.object({ name: z.string() }))
-        .query(() => ({ name: "Alice" })),
-      createUser: t.procedure
-        .input(z.object({ name: z.string() }))
-        .output(z.object({ id: z.string() }))
-        .mutation(() => ({ id: "1" })),
-    });
-
-    const doc = generateContract(router, [zodOpenApiAdapter]);
-
-    expect(doc.paths).toHaveProperty("/query/getUser");
-    expect(doc.paths).toHaveProperty("/mutation/createUser");
   });
 
   it("converts a router with multiple procedures", () => {
@@ -158,7 +174,7 @@ describe("generateContract", () => {
       apple: t.procedure.output(z.string()).query(() => "a"),
     });
 
-    const doc = generateContract(router, [zodOpenApiAdapter]);
+    const doc = generateContract(router, [zodAdapter]);
 
     expect(Object.keys(doc.paths)).toHaveLength(2);
     expect(doc.paths).toHaveProperty("/query/zebra");
@@ -172,7 +188,7 @@ describe("generateContract", () => {
       }),
     });
 
-    const doc = generateContract(router, [zodOpenApiAdapter]);
+    const doc = generateContract(router, [zodAdapter]);
 
     expect(doc.paths).toHaveProperty("/subscription/onEvent");
   });
@@ -194,7 +210,7 @@ describe("generateContract", () => {
       auth: authRouter,
     });
 
-    const doc = generateContract(router, [zodOpenApiAdapter]);
+    const doc = generateContract(router, [zodAdapter]);
 
     expect(doc.paths).toHaveProperty("/query/getUser");
     expect(doc.paths).toHaveProperty("/query/auth/me");

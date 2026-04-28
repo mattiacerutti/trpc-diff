@@ -1,8 +1,8 @@
-import { createSchema } from "zod-openapi";
 import { z } from "zod";
-import type { ParserOpenApiAdapter } from "../types";
+import { createSchema } from "zod-openapi";
+import { IParserAdapter } from "./index";
 
-export const zodOpenApiAdapter: ParserOpenApiAdapter<z.ZodType> = {
+export const zodAdapter: IParserAdapter<z.ZodType> = {
   isParser(value): value is z.ZodType {
     return value instanceof z.ZodType;
   },
