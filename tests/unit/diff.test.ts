@@ -1,6 +1,6 @@
-import {describe, expect, it} from "vitest";
-import {diffContracts} from "@/diff";
-import type {IDiffFinding, IOpenApiDocument} from "@/types";
+import { describe, expect, it } from "vitest";
+import { diffContracts } from "@/diff";
+import type { IDiffFinding, IOpenApiDocument } from "@/types";
 
 interface ITestSchema {
   type: string;
@@ -91,101 +91,113 @@ const BASE_RESPONSE_SCHEMA_CASES = [
 const BASE_RESPONSE_SCHEMA = REQUIRED_BASE_RESPONSE_SCHEMA;
 
 describe("diffContracts input compatibility", () => {
-  it.each(BASE_REQUEST_SCHEMA_CASES)("keeps optional request property additions compatible (%s)", async (_caseName, baseRequestSchema) => {
-    const base = createDocument(baseRequestSchema, BASE_RESPONSE_SCHEMA);
-    const head = createDocument(
-      {
-        type: "object",
-        properties: {
-          entityId: {
-            type: "string",
+  it.each(BASE_REQUEST_SCHEMA_CASES)(
+    "keeps optional request property additions compatible (%s)",
+    async (_caseName, baseRequestSchema) => {
+      const base = createDocument(baseRequestSchema, BASE_RESPONSE_SCHEMA);
+      const head = createDocument(
+        {
+          type: "object",
+          properties: {
+            entityId: {
+              type: "string",
+            },
+            details: {
+              type: "string",
+            },
           },
-          details: {
-            type: "string",
-          },
+          required: baseRequestSchema.required,
         },
-        required: baseRequestSchema.required,
-      },
-      BASE_RESPONSE_SCHEMA
-    );
+        BASE_RESPONSE_SCHEMA,
+      );
 
-    const result = await diffContracts(base, head);
+      const result = await diffContracts(base, head);
 
-    expect(result.compatible).toBe(true);
-    expect(result.findings).toHaveLength(0);
-  });
+      expect(result.compatible).toBe(true);
+      expect(result.findings).toHaveLength(0);
+    },
+  );
 
-  it.each(BASE_REQUEST_SCHEMA_CASES)("flags required request property additions as breaking (%s)", async (_caseName, baseRequestSchema) => {
-    const base = createDocument(baseRequestSchema, BASE_RESPONSE_SCHEMA);
-    const head = createDocument(
-      {
-        type: "object",
-        properties: {
-          entityId: {
-            type: "string",
+  it.each(BASE_REQUEST_SCHEMA_CASES)(
+    "flags required request property additions as breaking (%s)",
+    async (_caseName, baseRequestSchema) => {
+      const base = createDocument(baseRequestSchema, BASE_RESPONSE_SCHEMA);
+      const head = createDocument(
+        {
+          type: "object",
+          properties: {
+            entityId: {
+              type: "string",
+            },
+            type: {
+              type: "string",
+            },
           },
-          type: {
-            type: "string",
-          },
+          required: baseRequestSchema.required ? [...baseRequestSchema.required, "type"] : ["type"],
         },
-        required: baseRequestSchema.required ? [...baseRequestSchema.required, "type"] : ["type"],
-      },
-      BASE_RESPONSE_SCHEMA
-    );
+        BASE_RESPONSE_SCHEMA,
+      );
 
-    const result = await diffContracts(base, head);
+      const result = await diffContracts(base, head);
 
-    expect(result.compatible).toBe(false);
-    expect(result.findings.some((finding: IDiffFinding) => finding.code === "request.body.scope.remove")).toBe(true);
-  });
+      expect(result.compatible).toBe(false);
+      expect(result.findings.some((finding: IDiffFinding) => finding.code === "request.body.scope.remove")).toBe(true);
+    },
+  );
 
-  it.each(BASE_REQUEST_SCHEMA_CASES)("keeps optional request property removals compatible (%s)", async (_caseName, baseRequestSchema) => {
-    const base = createDocument(
-      {
-        type: "object",
-        properties: {
-          entityId: {
-            type: "string",
+  it.each(BASE_REQUEST_SCHEMA_CASES)(
+    "keeps optional request property removals compatible (%s)",
+    async (_caseName, baseRequestSchema) => {
+      const base = createDocument(
+        {
+          type: "object",
+          properties: {
+            entityId: {
+              type: "string",
+            },
+            details: {
+              type: "string",
+            },
           },
-          details: {
-            type: "string",
-          },
+          required: baseRequestSchema.required,
         },
-        required: baseRequestSchema.required,
-      },
-      BASE_RESPONSE_SCHEMA
-    );
-    const head = createDocument(baseRequestSchema, BASE_RESPONSE_SCHEMA);
+        BASE_RESPONSE_SCHEMA,
+      );
+      const head = createDocument(baseRequestSchema, BASE_RESPONSE_SCHEMA);
 
-    const result = await diffContracts(base, head);
+      const result = await diffContracts(base, head);
 
-    expect(result.compatible).toBe(true);
-    expect(result.findings).toHaveLength(0);
-  });
+      expect(result.compatible).toBe(true);
+      expect(result.findings).toHaveLength(0);
+    },
+  );
 
-  it.each(BASE_REQUEST_SCHEMA_CASES)("keeps required request property removals compatible (%s)", async (_caseName, baseRequestSchema) => {
-    const base = createDocument(
-      {
-        type: "object",
-        properties: {
-          entityId: {
-            type: "string",
+  it.each(BASE_REQUEST_SCHEMA_CASES)(
+    "keeps required request property removals compatible (%s)",
+    async (_caseName, baseRequestSchema) => {
+      const base = createDocument(
+        {
+          type: "object",
+          properties: {
+            entityId: {
+              type: "string",
+            },
+            type: {
+              type: "string",
+            },
           },
-          type: {
-            type: "string",
-          },
+          required: baseRequestSchema.required ? [...baseRequestSchema.required, "type"] : ["type"],
         },
-        required: baseRequestSchema.required ? [...baseRequestSchema.required, "type"] : ["type"],
-      },
-      BASE_RESPONSE_SCHEMA
-    );
-    const head = createDocument(baseRequestSchema, BASE_RESPONSE_SCHEMA);
+        BASE_RESPONSE_SCHEMA,
+      );
+      const head = createDocument(baseRequestSchema, BASE_RESPONSE_SCHEMA);
 
-    const result = await diffContracts(base, head);
+      const result = await diffContracts(base, head);
 
-    expect(result.compatible).toBe(true);
-    expect(result.findings).toHaveLength(0);
-  });
+      expect(result.compatible).toBe(true);
+      expect(result.findings).toHaveLength(0);
+    },
+  );
 
   it("flags required request type narrowing as breaking", async () => {
     const base = createDocument(
@@ -198,7 +210,7 @@ describe("diffContracts input compatibility", () => {
         },
         required: ["entityId"],
       },
-      BASE_RESPONSE_SCHEMA
+      BASE_RESPONSE_SCHEMA,
     );
     const head = createDocument(
       {
@@ -211,7 +223,7 @@ describe("diffContracts input compatibility", () => {
         },
         required: ["entityId"],
       },
-      BASE_RESPONSE_SCHEMA
+      BASE_RESPONSE_SCHEMA,
     );
 
     const result = await diffContracts(base, head);
@@ -232,7 +244,7 @@ describe("diffContracts input compatibility", () => {
         },
         required: ["entityId"],
       },
-      BASE_RESPONSE_SCHEMA
+      BASE_RESPONSE_SCHEMA,
     );
     const head = createDocument(
       {
@@ -244,7 +256,7 @@ describe("diffContracts input compatibility", () => {
         },
         required: ["entityId"],
       },
-      BASE_RESPONSE_SCHEMA
+      BASE_RESPONSE_SCHEMA,
     );
 
     const result = await diffContracts(base, head);
@@ -264,7 +276,7 @@ describe("diffContracts input compatibility", () => {
         },
         required: ["entityId"],
       },
-      BASE_RESPONSE_SCHEMA
+      BASE_RESPONSE_SCHEMA,
     );
     const head = createDocument(
       {
@@ -276,7 +288,7 @@ describe("diffContracts input compatibility", () => {
         },
         required: ["entityId"],
       },
-      BASE_RESPONSE_SCHEMA
+      BASE_RESPONSE_SCHEMA,
     );
 
     const result = await diffContracts(base, head);
@@ -297,7 +309,7 @@ describe("diffContracts input compatibility", () => {
         },
         required: ["entityId"],
       },
-      BASE_RESPONSE_SCHEMA
+      BASE_RESPONSE_SCHEMA,
     );
 
     const result = await diffContracts(base, head);
@@ -317,7 +329,7 @@ describe("diffContracts input compatibility", () => {
         },
         required: ["entityId"],
       },
-      BASE_RESPONSE_SCHEMA
+      BASE_RESPONSE_SCHEMA,
     );
     const head = createDocument(OPTIONAL_BASE_REQUEST_SCHEMA, BASE_RESPONSE_SCHEMA);
 
@@ -339,7 +351,7 @@ describe("diffContracts input compatibility", () => {
         },
         required: ["status"],
       },
-      BASE_RESPONSE_SCHEMA
+      BASE_RESPONSE_SCHEMA,
     );
     const head = createDocument(
       {
@@ -352,7 +364,7 @@ describe("diffContracts input compatibility", () => {
         },
         required: ["status"],
       },
-      BASE_RESPONSE_SCHEMA
+      BASE_RESPONSE_SCHEMA,
     );
 
     const result = await diffContracts(base, head);
@@ -373,7 +385,7 @@ describe("diffContracts input compatibility", () => {
         },
         required: ["status"],
       },
-      BASE_RESPONSE_SCHEMA
+      BASE_RESPONSE_SCHEMA,
     );
     const head = createDocument(
       {
@@ -386,7 +398,7 @@ describe("diffContracts input compatibility", () => {
         },
         required: ["status"],
       },
-      BASE_RESPONSE_SCHEMA
+      BASE_RESPONSE_SCHEMA,
     );
 
     const result = await diffContracts(base, head);
@@ -397,89 +409,101 @@ describe("diffContracts input compatibility", () => {
 });
 
 describe("diffContracts output compatibility", () => {
-  it.each(BASE_RESPONSE_SCHEMA_CASES)("keeps output property additions compatible (%s)", async (_caseName, baseResponseSchema) => {
-    const base = createDocument(BASE_REQUEST_SCHEMA, baseResponseSchema);
-    const head = createDocument(BASE_REQUEST_SCHEMA, {
-      type: "object",
-      properties: {
-        id: {
-          type: "string",
+  it.each(BASE_RESPONSE_SCHEMA_CASES)(
+    "keeps output property additions compatible (%s)",
+    async (_caseName, baseResponseSchema) => {
+      const base = createDocument(BASE_REQUEST_SCHEMA, baseResponseSchema);
+      const head = createDocument(BASE_REQUEST_SCHEMA, {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+          },
+          name: {
+            type: "string",
+          },
         },
-        name: {
-          type: "string",
+        required: baseResponseSchema.required,
+      });
+
+      const result = await diffContracts(base, head);
+
+      expect(result.compatible).toBe(true);
+      expect(result.findings).toHaveLength(0);
+    },
+  );
+
+  it.each(BASE_RESPONSE_SCHEMA_CASES)(
+    "keeps required output property additions compatible (%s)",
+    async (_caseName, baseResponseSchema) => {
+      const base = createDocument(BASE_REQUEST_SCHEMA, baseResponseSchema);
+      const head = createDocument(BASE_REQUEST_SCHEMA, {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+          },
+          name: {
+            type: "string",
+          },
         },
-      },
-      required: baseResponseSchema.required,
-    });
+        required: baseResponseSchema.required ? [...baseResponseSchema.required, "name"] : ["name"],
+      });
 
-    const result = await diffContracts(base, head);
+      const result = await diffContracts(base, head);
 
-    expect(result.compatible).toBe(true);
-    expect(result.findings).toHaveLength(0);
-  });
+      expect(result.compatible).toBe(true);
+      expect(result.findings).toHaveLength(0);
+    },
+  );
 
-  it.each(BASE_RESPONSE_SCHEMA_CASES)("keeps required output property additions compatible (%s)", async (_caseName, baseResponseSchema) => {
-    const base = createDocument(BASE_REQUEST_SCHEMA, baseResponseSchema);
-    const head = createDocument(BASE_REQUEST_SCHEMA, {
-      type: "object",
-      properties: {
-        id: {
-          type: "string",
+  it.each(BASE_RESPONSE_SCHEMA_CASES)(
+    "flags required output property removals as breaking (%s)",
+    async (_caseName, baseResponseSchema) => {
+      const base = createDocument(BASE_REQUEST_SCHEMA, {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+          },
+          name: {
+            type: "string",
+          },
         },
-        name: {
-          type: "string",
+        required: baseResponseSchema.required ? [...baseResponseSchema.required, "name"] : ["name"],
+      });
+      const head = createDocument(BASE_REQUEST_SCHEMA, baseResponseSchema);
+
+      const result = await diffContracts(base, head);
+
+      expect(result.compatible).toBe(false);
+      expect(result.findings.some((finding: IDiffFinding) => finding.code === "response.body.scope.add")).toBe(true);
+    },
+  );
+
+  it.each(BASE_RESPONSE_SCHEMA_CASES)(
+    "flags optional output property removals as breaking (%s)",
+    async (_caseName, baseResponseSchema) => {
+      const base = createDocument(BASE_REQUEST_SCHEMA, {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+          },
+          name: {
+            type: "string",
+          },
         },
-      },
-      required: baseResponseSchema.required ? [...baseResponseSchema.required, "name"] : ["name"],
-    });
+        required: baseResponseSchema.required,
+      });
+      const head = createDocument(BASE_REQUEST_SCHEMA, baseResponseSchema);
 
-    const result = await diffContracts(base, head);
+      const result = await diffContracts(base, head);
 
-    expect(result.compatible).toBe(true);
-    expect(result.findings).toHaveLength(0);
-  });
-
-  it.each(BASE_RESPONSE_SCHEMA_CASES)("flags required output property removals as breaking (%s)", async (_caseName, baseResponseSchema) => {
-    const base = createDocument(BASE_REQUEST_SCHEMA, {
-      type: "object",
-      properties: {
-        id: {
-          type: "string",
-        },
-        name: {
-          type: "string",
-        },
-      },
-      required: baseResponseSchema.required ? [...baseResponseSchema.required, "name"] : ["name"],
-    });
-    const head = createDocument(BASE_REQUEST_SCHEMA, baseResponseSchema);
-
-    const result = await diffContracts(base, head);
-
-    expect(result.compatible).toBe(false);
-    expect(result.findings.some((finding: IDiffFinding) => finding.code === "response.body.scope.add")).toBe(true);
-  });
-
-  it.each(BASE_RESPONSE_SCHEMA_CASES)("flags optional output property removals as breaking (%s)", async (_caseName, baseResponseSchema) => {
-    const base = createDocument(BASE_REQUEST_SCHEMA, {
-      type: "object",
-      properties: {
-        id: {
-          type: "string",
-        },
-        name: {
-          type: "string",
-        },
-      },
-      required: baseResponseSchema.required,
-    });
-    const head = createDocument(BASE_REQUEST_SCHEMA, baseResponseSchema);
-
-    const result = await diffContracts(base, head);
-
-    expect(result.compatible).toBe(false);
-    expect(result.findings.some((finding: IDiffFinding) => finding.code === "response.body.scope.add")).toBe(true);
-  });
+      expect(result.compatible).toBe(false);
+      expect(result.findings.some((finding: IDiffFinding) => finding.code === "response.body.scope.add")).toBe(true);
+    },
+  );
 
   it("flags required output type widening as breaking", async () => {
     const base = createDocument(BASE_REQUEST_SCHEMA, {
@@ -634,22 +658,22 @@ describe("diffContracts severity levels", () => {
       {
         type: "object",
         properties: {
-          entityId: {type: "string"},
-          details: {type: "string"},
+          entityId: { type: "string" },
+          details: { type: "string" },
         },
         required: ["entityId", "details"],
       },
-      {type: "object", properties: {id: {type: "string"}}, required: ["id"]}
+      { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
     );
     const head = createDocument(
       {
         type: "object",
         properties: {
-          entityId: {type: "string"},
+          entityId: { type: "string" },
         },
         required: ["entityId"],
       },
-      {type: "object", properties: {id: {type: "string"}}, required: ["id"]}
+      { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
     );
 
     const result = await diffContracts(base, head);
@@ -663,26 +687,26 @@ describe("diffContracts severity levels", () => {
       {
         type: "object",
         properties: {
-          entityId: {type: "string"},
-          details: {type: "string"},
+          entityId: { type: "string" },
+          details: { type: "string" },
         },
         required: ["entityId", "details"],
       },
-      {type: "object", properties: {id: {type: "string"}}, required: ["id"]}
+      { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
     );
     const head = createDocument(
       {
         type: "object",
         properties: {
-          entityId: {type: "string"},
+          entityId: { type: "string" },
         },
         required: ["entityId"],
       },
-      {type: "object", properties: {id: {type: "string"}}, required: ["id"]}
+      { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
     );
 
     const result = await diffContracts(base, head, {
-      severityLevels: {"request-property-removed": "err"},
+      severityLevels: { "request-property-removed": "err" },
     });
 
     expect(result.compatible).toBe(false);

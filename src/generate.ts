@@ -1,50 +1,97 @@
-import { createSchema } from "zod-openapi";
-import { z } from "zod";
-import type {
-  IOpenApiDocument,
-  IOpenApiOperation,
-  IProcedure,
-  IRouter,
-  IProcedureWrapper,
-  IOpenApiPathItem,
-} from "./types";
+import type { AnyProcedure, AnyRouter } from "@trpc/server";
+import type { IOpenApiDocument, IOpenApiOperation, IOpenApiPathItem, ParserOpenApiAdapter } from "./types";
 
-function mergeInputs(inputs: z.ZodType[] | undefined) {
-  if (!inputs || inputs.length === 0) {
-    return null;
-  }
-
-  if (inputs.length === 1) {
-    return inputs[0]!;
-  }
-
-  return inputs.slice(1).reduce<z.ZodType>((merged, input) => z.intersection(merged, input), inputs[0]!);
+interface RuntimeProcedureDef {
+  type: "query" | "mutation" | "subscription";
+  procedure: true;
+  inputs: unknown[];
+  output?: unknown;
 }
 
-function toSyntheticPath(procedureType: IProcedure["type"], procedurePath: string) {
-  return `/${procedureType}/${procedurePath}`;
+type RuntimeProcedure = AnyProcedure & { _def: RuntimeProcedureDef };
+
+function findAdapter(value: unknown, adapters: ParserOpenApiAdapter[]) {
+  return adapters.find((a) => a.isParser(value));
 }
 
-function schemaToOpenApiSchema(schema: z.ZodType, io: "input" | "output") {
-  if (schema.def.type === "void") {
+function mergeOpenApiSchemas(schemas: unknown[]): unknown {
+  if (schemas.length === 0) {
     return {};
   }
-
-  return createSchema(schema, { io, openapiVersion: "3.0.0" }).schema;
+  if (schemas.length === 1) {
+    return schemas[0]!;
+  }
+  return { allOf: schemas };
 }
 
-export function createOperation(procedurePath: string, procedure: IProcedure): IOpenApiOperation {
-  const inputSchema = mergeInputs(procedure.inputs);
-  const requestBodySchema = inputSchema ? schemaToOpenApiSchema(inputSchema, "input") : undefined;
+function buildInputSchema(inputs: unknown[], adapters: ParserOpenApiAdapter[]): unknown | undefined {
+  if (inputs.length === 0) {
+    return undefined;
+  }
+
+  const groups = new Map<ParserOpenApiAdapter, unknown[]>();
+
+  for (const input of inputs) {
+    const adapter = adapters.find((a) => a.isParser(input));
+    if (!adapter) {
+      console.warn("[trpc-diff] No adapter found for input parser, skipping.");
+      continue;
+    }
+    if (!groups.has(adapter)) {
+      groups.set(adapter, []);
+    }
+    groups.get(adapter)!.push(input);
+  }
+
+  const schemas: unknown[] = [];
+  for (const [adapter, group] of groups) {
+    const merged = adapter.mergeInputs(group as never[]);
+    if (merged) {
+      schemas.push(adapter.toSchema(merged, "input"));
+    }
+  }
+
+  if (schemas.length === 0) {
+    return undefined;
+  }
+
+  return mergeOpenApiSchemas(schemas);
+}
+
+function buildOutputSchema(output: unknown, adapters: ParserOpenApiAdapter[]): unknown | undefined {
+  if (output === undefined) {
+    return undefined;
+  }
+
+  const adapter = findAdapter(output, adapters);
+  if (!adapter) {
+    console.warn("[trpc-diff] No adapter found for output parser, skipping.");
+    return undefined;
+  }
+  return adapter.toSchema(output, "output");
+}
+
+function toSyntheticPath(procedureType: RuntimeProcedureDef["type"], procedurePath: string) {
+  return `/${procedureType}/${procedurePath.replace(/\./g, "/")}`;
+}
+
+export function createOperation(
+  procedurePath: string,
+  procedure: RuntimeProcedure,
+  adapters: ParserOpenApiAdapter[],
+): IOpenApiOperation {
+  const def = procedure._def;
+  const inputSchema = buildInputSchema(def.inputs, adapters);
+  const outputSchema = buildOutputSchema(def.output, adapters) || {};
 
   return {
     operationId: procedurePath,
-    requestBody: requestBodySchema
+    requestBody: inputSchema
       ? {
           required: true,
           content: {
             "application/json": {
-              schema: requestBodySchema,
+              schema: inputSchema,
             },
           },
         }
@@ -54,7 +101,7 @@ export function createOperation(procedurePath: string, procedure: IProcedure): I
         description: "Successful response",
         content: {
           "application/json": {
-            schema: procedure.output ? schemaToOpenApiSchema(procedure.output, "output") : {},
+            schema: outputSchema,
           },
         },
       },
@@ -62,34 +109,50 @@ export function createOperation(procedurePath: string, procedure: IProcedure): I
   };
 }
 
-function isProcedure(value: IRouter | IProcedureWrapper): value is IProcedureWrapper {
-  return "type" in value._def;
+function isProcedure(value: unknown): value is RuntimeProcedure {
+  if (typeof value !== "function") {
+    return false;
+  }
+
+  const def = (value as { _def?: unknown })._def;
+  if (typeof def !== "object" || def === null) {
+    return false;
+  }
+
+  const procedureDef = def as Partial<RuntimeProcedureDef>;
+
+  return (
+    procedureDef.procedure === true &&
+    Array.isArray(procedureDef.inputs) &&
+    (procedureDef.type === "query" || procedureDef.type === "mutation" || procedureDef.type === "subscription")
+  );
 }
 
-function collectPaths(router: IRouter, prefix: string[] = []): Record<string, IOpenApiPathItem> {
+function collectPaths(router: AnyRouter, adapters: ParserOpenApiAdapter[]): Record<string, IOpenApiPathItem> {
   const paths: Record<string, IOpenApiPathItem> = {};
 
-  for (const [key, value] of Object.entries(router._def.procedures)) {
+  for (const [procedurePath, value] of Object.entries(router._def.procedures)) {
     if (!isProcedure(value)) {
-      Object.assign(paths, collectPaths(value, [...prefix, key]));
+      console.warn(`[trpc-diff] Invalid procedure at path \`${procedurePath}\`, skipping.`);
       continue;
     }
 
-    const procedurePath = [...prefix, key].join(".");
-    const pathKey = toSyntheticPath(value._def.type, [...prefix, key].join("/"));
-    paths[pathKey] = { post: createOperation(procedurePath, value._def) };
+    const pathKey = toSyntheticPath(value._def.type, procedurePath);
+    paths[pathKey] = {
+      post: createOperation(procedurePath, value, adapters),
+    };
   }
 
   return paths;
 }
 
-export function generateContract(router: IRouter): IOpenApiDocument {
+export function generateContract(router: AnyRouter, adapters: ParserOpenApiAdapter[]): IOpenApiDocument {
   return {
     openapi: "3.0.0",
     info: {
       title: "tRPC Contract Diff",
       version: "1.0.0",
     },
-    paths: collectPaths(router),
+    paths: collectPaths(router, adapters),
   };
 }

@@ -1,61 +1,66 @@
-import {describe, expect, it} from "vitest";
-import {z} from "zod";
-import {createOperation, generateContract} from "@/generate";
+import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import { initTRPC } from "@trpc/server";
+import { createOperation, generateContract } from "@/generate";
+import { zodOpenApiAdapter } from "@/index";
+
+const t = initTRPC.create();
 
 describe("createOperation", () => {
   it("builds an operation with input and output", () => {
-    const operation = createOperation("createUser", {
-      type: "mutation",
-      inputs: [z.object({name: z.string()})],
-      output: z.object({id: z.string()}),
-    });
+    const procedure = t.procedure
+      .input(z.object({ name: z.string() }))
+      .output(z.object({ id: z.string() }))
+      .mutation(() => ({ id: "1" }));
+
+    const operation = createOperation("createUser", procedure, [zodOpenApiAdapter]);
 
     expect(operation.operationId).toBe("createUser");
     expect(operation.requestBody).toBeDefined();
     expect(operation.requestBody!.required).toBe(true);
     expect(operation.requestBody!.content!["application/json"]!.schema).toEqual({
-      properties: {name: {type: "string"}},
+      properties: { name: { type: "string" } },
       required: ["name"],
       type: "object",
     });
     expect(operation.responses["200"]!.content!["application/json"]!.schema).toEqual({
       additionalProperties: false,
-      properties: {id: {type: "string"}},
+      properties: { id: { type: "string" } },
       required: ["id"],
       type: "object",
     });
   });
 
   it("builds an operation without input", () => {
-    const operation = createOperation("getUsers", {
-      type: "query",
-      output: z.array(z.string()),
-    });
+    const procedure = t.procedure.output(z.array(z.string())).query(() => ["foo"]);
+
+    const operation = createOperation("getUsers", procedure, [zodOpenApiAdapter]);
 
     expect(operation.operationId).toBe("getUsers");
     expect(operation.requestBody).toBeUndefined();
     expect(operation.responses["200"]!.content!["application/json"]!.schema).toEqual({
-      items: {type: "string"},
+      items: { type: "string" },
       type: "array",
     });
   });
 
   it("builds an operation without output", () => {
-    const operation = createOperation("deleteUser", {
-      type: "mutation",
-      inputs: [z.object({id: z.string()})],
-    });
+    const procedure = t.procedure.input(z.object({ id: z.string() })).mutation(() => undefined);
+
+    const operation = createOperation("deleteUser", procedure, [zodOpenApiAdapter]);
 
     expect(operation.operationId).toBe("deleteUser");
     expect(operation.responses["200"]!.content!["application/json"]!.schema).toEqual({});
   });
 
   it("merges multiple inputs with intersection", () => {
-    const operation = createOperation("createUser", {
-      type: "mutation",
-      inputs: [z.object({name: z.string()}), z.object({email: z.string()})],
-      output: z.object({id: z.string()}),
-    });
+    const procedure = t.procedure
+      .input(z.object({ name: z.string() }))
+      .input(z.object({ email: z.string() }))
+      .output(z.object({ id: z.string() }))
+      .mutation(() => ({ id: "1" }));
+
+    const operation = createOperation("createUser", procedure, [zodOpenApiAdapter]);
 
     const requestSchema = operation.requestBody!.content!["application/json"]!.schema;
     expect(requestSchema).toBeDefined();
@@ -63,21 +68,16 @@ describe("createOperation", () => {
   });
 });
 
-describe("routerToOpenApiDocument", () => {
+describe("generateContract", () => {
   it("converts a router with one procedure", () => {
-    const doc = generateContract({
-      _def: {
-        procedures: {
-          createUser: {
-            _def: {
-              type: "mutation",
-              inputs: [z.object({name: z.string()})],
-              output: z.object({id: z.string()}),
-            },
-          },
-        },
-      },
+    const router = t.router({
+      createUser: t.procedure
+        .input(z.object({ name: z.string() }))
+        .output(z.object({ id: z.string() }))
+        .mutation(() => ({ id: "1" })),
     });
+
+    const doc = generateContract(router, [zodOpenApiAdapter]);
 
     expect(doc.openapi).toBe("3.0.0");
     expect(doc.paths).toHaveProperty("/mutation/createUser");
@@ -85,50 +85,30 @@ describe("routerToOpenApiDocument", () => {
   });
 
   it("converts a router with mixed procedure types", () => {
-    const doc = generateContract({
-      _def: {
-        procedures: {
-          getUser: {
-            _def: {
-              type: "query",
-              inputs: [z.object({id: z.string()})],
-              output: z.object({name: z.string()}),
-            },
-          },
-          createUser: {
-            _def: {
-              type: "mutation",
-              inputs: [z.object({name: z.string()})],
-              output: z.object({id: z.string()}),
-            },
-          },
-        },
-      },
+    const router = t.router({
+      getUser: t.procedure
+        .input(z.object({ id: z.string() }))
+        .output(z.object({ name: z.string() }))
+        .query(() => ({ name: "Alice" })),
+      createUser: t.procedure
+        .input(z.object({ name: z.string() }))
+        .output(z.object({ id: z.string() }))
+        .mutation(() => ({ id: "1" })),
     });
+
+    const doc = generateContract(router, [zodOpenApiAdapter]);
 
     expect(doc.paths).toHaveProperty("/query/getUser");
     expect(doc.paths).toHaveProperty("/mutation/createUser");
   });
 
   it("converts a router with multiple procedures", () => {
-    const doc = generateContract({
-      _def: {
-        procedures: {
-          zebra: {
-            _def: {
-              type: "query",
-              output: z.string(),
-            },
-          },
-          apple: {
-            _def: {
-              type: "query",
-              output: z.string(),
-            },
-          },
-        },
-      },
+    const router = t.router({
+      zebra: t.procedure.output(z.string()).query(() => "z"),
+      apple: t.procedure.output(z.string()).query(() => "a"),
     });
+
+    const doc = generateContract(router, [zodOpenApiAdapter]);
 
     expect(Object.keys(doc.paths)).toHaveLength(2);
     expect(doc.paths).toHaveProperty("/query/zebra");
@@ -136,55 +116,35 @@ describe("routerToOpenApiDocument", () => {
   });
 
   it("converts a subscription procedure", () => {
-    const doc = generateContract({
-      _def: {
-        procedures: {
-          onEvent: {
-            _def: {
-              type: "subscription",
-              output: z.string(),
-            },
-          },
-        },
-      },
+    const router = t.router({
+      onEvent: t.procedure.subscription(async function* () {
+        yield "event";
+      }),
     });
+
+    const doc = generateContract(router, [zodOpenApiAdapter]);
 
     expect(doc.paths).toHaveProperty("/subscription/onEvent");
   });
 
   it("converts nested routers", () => {
-    const doc = generateContract({
-      _def: {
-        procedures: {
-          getUser: {
-            _def: {
-              type: "query",
-              inputs: [z.object({id: z.string()})],
-              output: z.object({name: z.string()}),
-            },
-          },
-          auth: {
-            _def: {
-              procedures: {
-                me: {
-                  _def: {
-                    type: "query",
-                    output: z.object({id: z.string()}),
-                  },
-                },
-                login: {
-                  _def: {
-                    type: "mutation",
-                    inputs: [z.object({email: z.string(), password: z.string()})],
-                    output: z.object({token: z.string()}),
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+    const authRouter = t.router({
+      me: t.procedure.output(z.object({ id: z.string() })).query(() => ({ id: "1" })),
+      login: t.procedure
+        .input(z.object({ email: z.string(), password: z.string() }))
+        .output(z.object({ token: z.string() }))
+        .mutation(() => ({ token: "abc" })),
     });
+
+    const router = t.router({
+      getUser: t.procedure
+        .input(z.object({ id: z.string() }))
+        .output(z.object({ name: z.string() }))
+        .query(() => ({ name: "Alice" })),
+      auth: authRouter,
+    });
+
+    const doc = generateContract(router, [zodOpenApiAdapter]);
 
     expect(doc.paths).toHaveProperty("/query/getUser");
     expect(doc.paths).toHaveProperty("/query/auth/me");

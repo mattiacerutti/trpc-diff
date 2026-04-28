@@ -1,19 +1,7 @@
-import type { z } from "zod";
-
-export interface IProcedure {
-  type: "query" | "mutation" | "subscription";
-  inputs?: z.ZodType[];
-  output?: z.ZodType;
-}
-
-export interface IRouter {
-  _def: {
-    procedures: Record<string, IRouter | IProcedureWrapper>;
-  };
-}
-
-export interface IProcedureWrapper {
-  _def: IProcedure;
+export interface ParserOpenApiAdapter<TParser = unknown> {
+  isParser(value: unknown): value is TParser;
+  mergeInputs(inputs: TParser[]): TParser | null;
+  toSchema(parser: TParser, io: "input" | "output"): unknown;
 }
 
 interface IOpenApiResponse {
