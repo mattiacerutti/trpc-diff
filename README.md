@@ -20,6 +20,8 @@ npm install -D trpc-diff
 bun add -D trpc-diff
 ```
 
+Make sure you have `@trpc/server` installed (peer dependency).
+
 ## Usage
 
 Import your router, generate a contract, and diff it against another version.
@@ -27,14 +29,36 @@ Import your router, generate a contract, and diff it against another version.
 ### Generate a contract
 
 ```ts
-import { generateContract } from "trpc-diff";
+import { generateContract, zodOpenApiAdapter } from "trpc-diff";
 import { appRouter } from "./server/router";
 
-const contract = generateContract(appRouter);
+const contract = generateContract(appRouter, [zodOpenApiAdapter]);
 
 // write to disk or pass directly to diffContracts
 await Bun.write("contract.json", JSON.stringify(contract, null, 2));
 ```
+
+You must provide at least one schema adapter. `zodOpenApiAdapter` is included for Zod schemas. You can also bring your own adapter for other parsers (e.g. Valibot, ArkType, or custom validators).
+
+#### Custom adapters
+
+If your router uses multiple parser libraries, you can provide multiple adapters:
+
+```ts
+const contract = generateContract(appRouter, [zodOpenApiAdapter, myValibotAdapter]);
+```
+
+An adapter implements the `ParserOpenApiAdapter<TParser>` interface:
+
+```ts
+export interface ParserOpenApiAdapter<TParser = unknown> {
+  isParser(value: unknown): value is TParser;
+  mergeInputs(inputs: TParser[]): TParser | null;
+  toSchema(parser: TParser, io: "input" | "output"): unknown;
+}
+```
+
+If a procedure chains inputs from different parser families, their resulting OpenAPI schemas are merged with `{ allOf: [...] }`.
 
 ### Diff two contracts
 
@@ -53,7 +77,9 @@ if (!result.compatible) {
 }
 ```
 
-### Custom severity levels
+### Options
+
+#### Custom severity levels
 
 ```ts
 const result = await diffContracts(base, head, {
@@ -80,6 +106,16 @@ To see all available check ids and their default levels, install `@oasdiff-js/oa
 npx oasdiff checks
 ```
 
+#### Exit on missing adapter
+
+By default, if a procedure uses a parser that none of the provided adapters can handle, `generateContract` will throw and exit. You can make it skip and log it instead:
+
+```ts
+const contract = generateContract(appRouter, [zodOpenApiAdapter], {
+  exitOnMissingAdapter: false,
+});
+```
+
 ### Using it in CI
 
 Since the library is runtime-agnostic, you can diff PRs in CI by generating contracts in each checkout with the same runtime your app uses.
@@ -97,9 +133,15 @@ Since the library is runtime-agnostic, you can diff PRs in CI by generating cont
 
 ## API reference
 
-### `generateContract(router: IRouter): IOpenApiDocument`
+### `generateContract(router, adapters, options?): IOpenApiDocument`
 
 Converts a tRPC router to an OpenAPI 3.0 contract.
+
+| Parameter                      | Type                     | Description                                           |
+| ------------------------------ | ------------------------ | ----------------------------------------------------- |
+| `router`                       | `AnyRouter`              | tRPC router                                           |
+| `adapters`                     | `ParserOpenApiAdapter[]` | Adapters for parsing input/output schemas             |
+| `options.exitOnMissingAdapter` | `boolean`                | Throw when a parser has no adapter (default: `false`) |
 
 ### `diffContracts(base, head, options?): Promise<IDiffResult>`
 
