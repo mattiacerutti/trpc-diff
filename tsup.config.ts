@@ -1,7 +1,7 @@
-import {defineConfig} from "tsup";
+import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/cli.ts"],
+  entry: ["src/index.ts", "src/eslint/index.ts"],
   format: ["esm"],
   dts: true,
   splitting: false,

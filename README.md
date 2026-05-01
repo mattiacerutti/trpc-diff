@@ -116,6 +116,29 @@ const contract = generateContract(appRouter, [zodAdapter], {
 });
 ```
 
+### ESLint rule
+
+`trpc-diff` can only generate accurate response contracts when procedures explicitly declare `.output()`. tRPC can infer outputs from resolver return types, but that type information is not available from the runtime router metadata used by this library.
+
+You can opt into the bundled ESLint rule to enforce explicit outputs:
+
+```js
+import trpcDiff from "trpc-diff/eslint";
+
+export default [
+  {
+    plugins: {
+      "trpc-diff": trpcDiff,
+    },
+    rules: {
+      "trpc-diff/require-output": "error",
+    },
+  },
+];
+```
+
+If a procedure intentionally has no output, use `.output(z.void())`.
+
 ### Using it in CI
 
 Since the library is runtime-agnostic, you can diff PRs in CI by generating contracts in each checkout with the same runtime your app uses.
