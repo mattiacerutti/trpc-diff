@@ -8,14 +8,14 @@ export interface IGenerateContractOptions {
 
 interface IOpenApiResponse {
   description: string;
-  content?: Record<string, { schema?: unknown }>;
+  content?: Record<string, {schema?: unknown}>;
 }
 
 export interface IOpenApiOperation {
   operationId: string;
   requestBody?: {
     required: boolean;
-    content: Record<string, { schema?: unknown }>;
+    content: Record<string, {schema?: unknown}>;
   };
   responses: Record<string, IOpenApiResponse>;
 }

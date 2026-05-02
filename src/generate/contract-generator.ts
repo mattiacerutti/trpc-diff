@@ -1,6 +1,6 @@
-import type { AnyProcedure, AnyRouter } from "@trpc/server";
-import type { IGenerateContractOptions, IOpenApiDocument, IOpenApiOperation, IOpenApiPathItem } from "@/types";
-import { IParserAdapter } from "@/generate/adapters";
+import type {AnyProcedure, AnyRouter} from "@trpc/server";
+import type {IGenerateContractOptions, IOpenApiDocument, IOpenApiOperation, IOpenApiPathItem} from "@/types";
+import {IParserAdapter} from "@/generate/adapters";
 
 interface RuntimeProcedureDef {
   type: "query" | "mutation" | "subscription";
@@ -9,7 +9,7 @@ interface RuntimeProcedureDef {
   output?: unknown;
 }
 
-type RuntimeProcedure = AnyProcedure & { _def: RuntimeProcedureDef };
+type RuntimeProcedure = AnyProcedure & {_def: RuntimeProcedureDef};
 
 export class ContractGenerator {
   private readonly options: Required<IGenerateContractOptions>;
@@ -137,7 +137,7 @@ export class ContractGenerator {
       return false;
     }
 
-    const def = (value as { _def?: unknown })._def;
+    const def = (value as {_def?: unknown})._def;
     if (typeof def !== "object" || def === null) {
       return false;
     }
@@ -158,7 +158,7 @@ export class ContractGenerator {
     if (schemas.length === 1) {
       return schemas[0]!;
     }
-    return { allOf: schemas };
+    return {allOf: schemas};
   }
 
   private _handleMissingAdapter(kind: "input" | "output") {

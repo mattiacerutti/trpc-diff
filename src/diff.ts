@@ -1,9 +1,9 @@
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import {mkdtemp, writeFile, rm} from "node:fs/promises";
 import path from "node:path";
-import { tmpdir } from "node:os";
-import { runOasdiffBreakingFromSpecs } from "@oasdiff-js/oasdiff-js";
-import type { IOasdiffChange } from "@oasdiff-js/oasdiff-js";
-import type { IDiffContractsOptions, IDiffFinding, IDiffResult, IOpenApiDocument } from "@/types";
+import {tmpdir} from "node:os";
+import {runOasdiffBreakingFromSpecs} from "@oasdiff-js/oasdiff-js";
+import type {IOasdiffChange} from "@oasdiff-js/oasdiff-js";
+import type {IDiffContractsOptions, IDiffFinding, IDiffResult, IOpenApiDocument} from "@/types";
 
 const OASDIFF_BREAKING_LEVEL = 2;
 
@@ -55,12 +55,8 @@ async function buildSeverityLevelsFile(levels: Record<string, string>): Promise<
   return filePath;
 }
 
-export async function diffContracts(
-  base: IOpenApiDocument,
-  head: IOpenApiDocument,
-  options: IDiffContractsOptions = {},
-): Promise<IDiffResult> {
-  const severityLevels = { ...DEFAULT_SEVERITY_LEVELS, ...options.severityLevels };
+export async function diffContracts(base: IOpenApiDocument, head: IOpenApiDocument, options: IDiffContractsOptions = {}): Promise<IDiffResult> {
+  const severityLevels = {...DEFAULT_SEVERITY_LEVELS, ...options.severityLevels};
   const severityLevelsFile = await buildSeverityLevelsFile(severityLevels);
 
   try {
@@ -76,6 +72,6 @@ export async function diffContracts(
       findings,
     };
   } finally {
-    await rm(path.dirname(severityLevelsFile), { recursive: true, force: true });
+    await rm(path.dirname(severityLevelsFile), {recursive: true, force: true});
   }
 }

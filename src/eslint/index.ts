@@ -1,4 +1,4 @@
-import { requireOutputRule } from "./rules/require-output";
+import {requireOutputRule} from "./rules/require-output";
 
 const plugin = {
   rules: {
@@ -7,4 +7,4 @@ const plugin = {
 };
 
 export default plugin;
-export { requireOutputRule };
+export {requireOutputRule};

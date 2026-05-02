@@ -1,4 +1,4 @@
-import type { Rule } from "eslint";
+import type {Rule} from "eslint";
 
 const TERMINAL_METHODS = new Set(["query", "mutation", "subscription"]);
 const PROCEDURE_METHODS = new Set(["procedure", "input", "output", "use", "meta"]);
@@ -11,7 +11,7 @@ interface ChainInfo {
 }
 
 function isNode(value: unknown): value is NodeLike {
-  return typeof value === "object" && value !== null && typeof (value as { type?: unknown }).type === "string";
+  return typeof value === "object" && value !== null && typeof (value as {type?: unknown}).type === "string";
 }
 
 function getPropertyName(node: NodeLike): string | undefined {
@@ -72,7 +72,7 @@ function isProcedureName(name: string): boolean {
   return name.toLowerCase().includes("procedure");
 }
 
-function isLikelyProcedureChain({ methods, rootNames }: ChainInfo): boolean {
+function isLikelyProcedureChain({methods, rootNames}: ChainInfo): boolean {
   return rootNames.some(isProcedureName) || methods.some((method) => PROCEDURE_METHODS.has(method));
 }
 

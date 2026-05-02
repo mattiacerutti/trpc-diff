@@ -1,6 +1,6 @@
-import { z } from "zod";
-import { createSchema } from "zod-openapi";
-import { IParserAdapter } from "./index";
+import {z} from "zod";
+import {createSchema} from "zod-openapi";
+import {IParserAdapter} from "./index";
 
 export const zodAdapter: IParserAdapter<z.ZodType> = {
   isParser(value): value is z.ZodType {
@@ -18,9 +18,9 @@ export const zodAdapter: IParserAdapter<z.ZodType> = {
   },
 
   toSchema(parser, io) {
-    if ((parser as z.ZodType & { _zod: { def: { type: string } } })._zod.def.type === "void") {
+    if ((parser as z.ZodType & {_zod: {def: {type: string}}})._zod.def.type === "void") {
       return {};
     }
-    return createSchema(parser, { io, openapiVersion: "3.0.0" }).schema;
+    return createSchema(parser, {io, openapiVersion: "3.0.0"}).schema;
   },
 };

@@ -4,4 +4,4 @@ export interface IParserAdapter<TParser = unknown> {
   toSchema(parser: TParser, io: "input" | "output"): unknown;
 }
 
-export { zodAdapter } from "./zod-adapter";
+export {zodAdapter} from "./zod-adapter";
